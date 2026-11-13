@@ -1,16 +1,20 @@
 package demo;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeDriverService;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+
 
 import java.time.Duration;
 import java.time.Instant;
@@ -30,40 +34,51 @@ public class TestCases {
     }
 
     @Test
-    public void testCase01() {
-
+    public void testCase01() throws InterruptedException {
+        // Step 1: Navigate to Google Form
         Wrappers.navigateTo(driver, FORM_URL);
+        System.out.println("Opened Google Form");
 
-        Wrappers.typeText(driver, question("Name", "//*[(self::input or self::textarea) and not(@type='hidden') and not(@aria-hidden='true')]"), "Crio Learner");
+        // Step 2: Fill Name and Reason for practicing automation
+        Wrappers.typeText(driver, question("Name", "//input[@type='text']"), "Crio Learner");
 
         long epoch = Instant.now().getEpochSecond();
-        Wrappers.typeText(driver, question("Why are you practicing Automation", "//*[(self::input or self::textarea) and not(@type='hidden') and not(@aria-hidden='true')]"),
+        Wrappers.typeText(driver, question("Why are you practicing Automation", "//textarea"),
                 "I want to be the best QA Engineer! " + epoch);
 
+        // Step 3: Select experience and skills
         Wrappers.clickElement(driver, By.xpath("//div[@role='radio' and @data-value='3 - 5']"));
 
         for (String skill : new String[] {"Java", "Selenium", "TestNG"}) {
             Wrappers.clickElement(driver, By.xpath("//div[@role='checkbox' and @aria-label='" + skill + "']"));
         }
 
+        // Step 4: Select title, date, and time
         Wrappers.clickElement(driver, question("How should you be addressed", "//div[@role='listbox']"));
-        Wrappers.clickElement(driver, By.xpath("//div[@role='option']//span[text()='Mr']"));
+        Thread.sleep(1000);
+        WebElement mrOption = driver.findElement(By.xpath("(//div[@role='option']//span[text()='Mr'])[last()]"));
+        ((JavascriptExecutor) driver).executeScript("arguments[0].click();", mrOption);
+
+        String date = LocalDate.now().minusDays(7).format(DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+        driver.findElement(question("What was the date 7 days ago", "//input[@type='date']")).sendKeys(date);
 
 
-        String date = LocalDate.now().minusDays(7).format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        Wrappers.typeText(driver, question("What was the date 7 days ago", "//input[@type='date']"), date);
 
         Wrappers.typeText(driver, question("What is the time right now", "//input[@aria-label='Hour']"), "07");
         Wrappers.typeText(driver, question("What is the time right now", "//input[@aria-label='Minute']"), "30");
 
+        // Step 5: Submit form and verify message
         Wrappers.clickElement(driver, By.xpath("//span[text()='Submit']"));
+        System.out.println("Form submitted");
 
         WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
         wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//div[contains(text(),'Thanks for your response')]")));
+
         String message = Wrappers.getText(driver, By.xpath("//div[contains(text(),'Thanks for your response')]"));
+        System.out.println("Confirmation message: " + message);
     }
 
-        @BeforeTest
+    @BeforeTest
     public void startBrowser() {
         System.setProperty("java.util.logging.config.file", "logging.properties");
 
@@ -83,13 +98,12 @@ public class TestCases {
         System.setProperty(ChromeDriverService.CHROME_DRIVER_LOG_PROPERTY, "build/chromedriver.log");
 
         driver = new ChromeDriver(options);
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(15));
     }
-
 
     @AfterTest
     public void endTest() {
         if (driver != null) {
-            driver.close();
             driver.quit();
         }
     }
